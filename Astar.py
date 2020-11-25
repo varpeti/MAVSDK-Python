@@ -2,6 +2,9 @@ import asyncio
 import heapq
 import math
 from queue import PriorityQueue
+
+from typing import List
+
 from Octree import Octree
 from Draw import Draw
 
@@ -25,19 +28,6 @@ class Pos:
                          (self.y - other.y) ** 2.0 +
                          (self.z - other.z) ** 2.0)
 
-    def getNeighbours(self):
-        neighbours = [Pos(self.x + Pos.neighbourDistance, self.y, self.z),
-                      Pos(self.x, self.y + Pos.neighbourDistance, self.z),
-                      Pos(self.x, self.y, self.z + Pos.neighbourDistance),
-                      Pos(self.x - Pos.neighbourDistance, self.y, self.z),
-                      Pos(self.x, self.y - Pos.neighbourDistance, self.z),
-                      Pos(self.x, self.y, self.z - Pos.neighbourDistance)]
-        ret = []
-        for n in neighbours:
-            if root.getValue(n) == "Air":
-                ret.append(n)
-        return ret
-
     def __eq__(self, other):
         return (self.x == other.x) and \
                (self.y == other.y) and \
@@ -53,7 +43,7 @@ class Node:
             self.goal = parent.goal
             self.path = parent.path[:]
             self.path.append(value)
-            self.g = parent.g + Pos.neighbourDistance / 100
+            self.g = parent.g + Pos.neighbourDistance / 10
         else:
             self.path = [value]
             self.goal = goal
@@ -65,11 +55,15 @@ class Node:
     def getDistance(self):
         return self.value.distance(self.goal)
 
-    def getChildren(self):
-        neighbours = self.value.getNeighbours()
+    def getChildren(self, root: Octree, goalOctree: Octree):
+        cur = root.getLeavesInArea(self.value, Pos(0.0, 0.0, 0.0))[0]
+        if cur == goalOctree:
+            return [Node(self.goal, self, self.goal)]
+        neighbours = root.getNeighbours(self.value, cur)
         children = []
         for n in neighbours:
-            children.append(Node(n, self, self.goal))
+            if n.value == "Air":
+                children.append(Node(Pos(n.pos.x, n.pos.y, n.pos.z), self, self.goal))
         return children
 
     def __repr__(self):
@@ -79,19 +73,20 @@ class Node:
         return self.value == other.value
 
 
-def Astar(start: Pos, goal: Pos):
+def Astar(start: Pos, goal: Pos, root: Octree) -> List[Pos]:
     path = []
     visited = []
     priorityQueue = PriorityQueue()
     count = 0
+    goalOctree = root.getLeavesInArea(goal, Pos(0.0, 0.0, 0.0))[0]
 
     priorityQueue.put((0, count, Node(start, 0, goal)))
 
     while not path and priorityQueue.qsize():
         current = priorityQueue.get()[2]
         visited.append(current.value)
-        draw.addPoint(current.value)
-        children = current.getChildren()
+        #draw.addPoint(current.value)
+        children = current.getChildren(root, goalOctree)
         for child in children:
             a = child.value not in visited
             if child.value not in visited:
@@ -101,23 +96,20 @@ def Astar(start: Pos, goal: Pos):
                     break
                 priorityQueue.put((child.f, count, child))
         if count > 9000:
+            print("Over9000")
             return current.path
     return path
 
-
-
-
-draw = Draw(Pos(0.0, 0.0, 0.0), Pos(6.0, 6.0, -6.0))
+'''
+draw = Draw(Pos(-32.0, -32.0, 0.0), Pos(32.0, 32.0, -64.0))
 
 if __name__ == '__main__':
     Octree.minSize = 0.25 * 0.25 * 0.25
     root = Octree(Pos(0.0, 0.0, -32.0), Pos(32.0, 32.0, 32.0), "Air")
-    root.setValue(Pos(2.75, 0.0, 0.0), Pos(0.5, 1.125, 1.500), "Obstacle")
-    airO = root.getLeavesByValue("Air")
-    air = []
-    for i in airO:
-        air.append(i.pos)
-    print(air)
-    #path = Astar(Pos(0.0, 0.0, 0.0), Pos(6.0, 0.0, -1.0))
-    #draw.showPath(path)
-    #draw.wait()
+    root.setValue(Pos(2.75, 0.0, 0.0), Pos(0.5, 5.125, 5.500), "Obstacle")
+
+    path = Astar(Pos(0.0, 0.0, 0.0), Pos(6.0, 0.0, -1.0), root)
+    print(path)
+    draw.showPath(path)
+    draw.wait()
+'''

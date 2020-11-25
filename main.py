@@ -4,6 +4,11 @@ import asyncio
 
 from mavsdk import System
 from mavsdk.offboard import OffboardError, PositionNedYaw
+from typing import List
+
+from Astar import Pos, Astar
+from Octree import Vector3, Octree
+from Draw import Draw
 
 localDronePos = \
     {
@@ -28,7 +33,7 @@ async def readStatus(drone):
         print(f"Status: {st.text}")
 
 
-async def run():
+async def run(path: List[Pos]):
     drone = System()
     await drone.connect(system_address="udp://:14540")
 
@@ -65,26 +70,10 @@ async def run():
         await drone.action.disarm()
         return
 
-    '''
-    print("Go North 10m")
-    await drone.offboard.set_position_ned(moveDrone(2.0, 0.0, 0.0, 0.0))
-    await asyncio.sleep(5)
-    print("Go East 10m and turn 90°")
-    await drone.offboard.set_position_ned(moveDrone(0.0, 2.0, 0.0, 90.0))
-    await asyncio.sleep(5)
-    print("Go South 10m and turn 90°")
-    await drone.offboard.set_position_ned(moveDrone(-2.0, 0.0, 0.0, 90.0))
-    await asyncio.sleep(5)
-    print("Go West 10m and turn 90°")
-    await drone.offboard.set_position_ned(moveDrone(0.0, -2.0, 0.0, 90.0))
-    await asyncio.sleep(5)
-    print("Face North again")
-    await drone.offboard.set_position_ned(moveDrone(0.0, 0.0, 0.0, 90.0))
-    await asyncio.sleep(5)
-    '''
-
-    await drone.offboard.set_position_ned(PositionNedYaw(0, 0, -1, 0))
-    await asyncio.sleep(20)
+    for p in path:
+        print("Goto:", p)
+        await drone.offboard.set_position_ned(PositionNedYaw(p.x, p.y, p.z, 0))
+        await asyncio.sleep(5)  # TODO read our pos, adjust, then move on
 
     print("Stopping offboard")
     try:
@@ -96,6 +85,30 @@ async def run():
     await drone.action.return_to_launch()
 
 
+def loadMap(fileName: str, root: Octree):
+    def mine(line: str, root: Octree):
+        data = line.split(' ')
+        pos = Vector3(float(data[0]), float(data[1]), float(data[2]))
+        size = Vector3(float(data[3]), float(data[4]), float(data[5]))
+        root.setValue(pos, size, "Obstacle")
+
+    f = open(fileName, "r")
+    while f:
+        line = f.readline()
+        if line == "": break
+        mine(line, root)
+    f.close()
+
+
 if __name__ == "__main__":
+    Octree.minSize = 0.25 * 0.25 * 0.25
+    root = Octree(Vector3(0.0, 0.0, -32.0), Vector3(32.0, 32.0, 32.0), "Air")
+    loadMap("obstacles/obstacles.map",root)
+    start = Pos(0.0, 0.0, 0.0)
+    goal = Pos(6.0, 0.2, -2.0)
+    path = Astar(start, goal, root)
+    draw = Draw(Vector3(-32.0, -32.0, 0.0), Vector3(32.0, 32.0, -64.0))
+    draw.showPath(path)
+
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(run())
+    loop.run_until_complete(run(path))

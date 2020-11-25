@@ -41,7 +41,7 @@ class Octree:
         self.value = value
         self.leaf = True
         self.area = size.x * size.y * size.z * 8
-        self.children = [None] * Octree.NUMBER_OF_CHILDREN
+        self.children: list[Octree] = [None] * Octree.NUMBER_OF_CHILDREN
 
     def setValue(self, pos, size, value):
         # print(self.pos, self.size, self.area, Octree.minSize, self.area <= Octree.minSize)
@@ -173,8 +173,8 @@ class Octree:
           nx nz
     '''
 
-    def getNeighbours(self, pos):
-        cur = self.getLeavesInArea(pos, Vector3(0.0, 0.0, 0.0))[0]
+    def getNeighbours(self, pos, cur=None):
+        cur = cur or self.getLeavesInArea(pos, Vector3(0.0, 0.0, 0.0))[0]
         minLength = (Octree.minSize ** (1.0 / 3.0)) / 2
         neighbours = []
         nx = self.getLeavesInArea(cur.pos, Vector3(cur.size.x + minLength, 0.0, 0.0))
@@ -189,6 +189,7 @@ class Octree:
         return neighbours
 
 
+'''
 if __name__ == '__main__':
     Octree.minSize = 0.25 * 0.25 * 0.25
     root = Octree(Vector3(0.0, 0.0, -32.0), Vector3(32.0, 32.0, 32.0), "Air")
@@ -197,3 +198,13 @@ if __name__ == '__main__':
     print(len(nl))
     for n in nl:
         print(n.pos)
+'''
+
+if __name__ == '__main__':
+    def foo(a=None):
+        a = a or 12
+        print(a)
+
+
+    foo()
+    foo(10)
