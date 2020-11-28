@@ -7,7 +7,7 @@ class Draw:
     def addPoint(self, point):
         xdata, ydata, zdata = self.hl._verts3d
         self.hl.set_xdata(np.array(np.append(xdata, point.x)))
-        self.hl.set_ydata(np.array(np.append(ydata, point.y)))
+        self.hl.set_ydata(np.array(np.append(ydata, -point.y)))
         self.hl.set_3d_properties(np.array(np.append(zdata, point.z)))
         plt.draw()
         plt.show(block=False)
@@ -15,7 +15,7 @@ class Draw:
     def showPath(self, path):
         xdata, ydata, zdata = self.hk._verts3d
         x, y, z = [], [], []
-        for i in path: x.append(i.x);y.append(i.y);z.append(i.z)
+        for i in path: x.append(i.x);y.append(-i.y);z.append(i.z)
         self.hk.set_xdata(np.array(np.append(xdata, x)))
         self.hk.set_ydata(np.array(np.append(ydata, y)))
         self.hk.set_3d_properties(np.array(np.append(zdata, z)))

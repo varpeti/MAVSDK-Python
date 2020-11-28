@@ -1,26 +1,12 @@
-class Vector3:
-    x = 0.0
-    y = 0.0
-    z = 0.0
-
-    def __init__(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z
-
-    def __str__(self):
-        return str(self.x) + " " + str(self.y) + " " + str(self.z)
-
-    def __repr__(self):
-        return str(self.x) + " " + str(self.y) + " " + str(self.z)
+from Pos import Pos
 
 
 class Octree:
-    pos = Vector3(0.0, 0.0, 0.0)
-    size = Vector3(0.0, 0.0, 0.0)
+    pos = Pos(0.0, 0.0, 0.0)
+    size = Pos(0.0, 0.0, 0.0)
     value = 0
     leaf = True
-    area = 0
+    volume = 0
 
     minSize = 1.0
     NUMBER_OF_CHILDREN = 8
@@ -40,11 +26,11 @@ class Octree:
         self.size = size
         self.value = value
         self.leaf = True
-        self.area = size.x * size.y * size.z * 8
+        self.volume = size.x * size.y * size.z * 8
         self.children: list[Octree] = [None] * Octree.NUMBER_OF_CHILDREN
 
     def setValue(self, pos, size, value):
-        # print(self.pos, self.size, self.area, Octree.minSize, self.area <= Octree.minSize)
+        # print(self.pos, self.size, self.volume, Octree.minSize, self.volume <= Octree.minSize)
         if self.isFullyContained(pos, size):
             # print("FullyContained")
             if not self.leaf:
@@ -53,7 +39,7 @@ class Octree:
             self.leaf = True
         elif not self.isFullyOutside(pos, size):
             # print("PartiallyContained")
-            if self.area <= Octree.minSize:
+            if self.volume <= Octree.minSize:
                 # self.value = value
                 return
             if self.leaf:
@@ -63,7 +49,7 @@ class Octree:
         # print("FullyOutside")
 
     def getValue(self, pos):
-        if self.isFullyOutside(pos, Vector3(0.0, 0.0, 0.0)):
+        if self.isFullyOutside(pos, Pos(0.0, 0.0, 0.0)):
             return None
 
         if self.leaf:
@@ -115,23 +101,23 @@ class Octree:
 
     def split(self):
         self.leaf = False
-        childSize = Vector3(self.size.x / 2.0, self.size.y / 2.0, self.size.z / 2.0)
+        childSize = Pos(self.size.x / 2.0, self.size.y / 2.0, self.size.z / 2.0)
 
-        self.children[0] = Octree(Vector3(self.pos.x - childSize.x, self.pos.y - childSize.y, self.pos.z - childSize.z),
+        self.children[0] = Octree(Pos(self.pos.x - childSize.x, self.pos.y - childSize.y, self.pos.z - childSize.z),
                                   childSize, self.value)
-        self.children[1] = Octree(Vector3(self.pos.x + childSize.x, self.pos.y - childSize.y, self.pos.z - childSize.z),
+        self.children[1] = Octree(Pos(self.pos.x + childSize.x, self.pos.y - childSize.y, self.pos.z - childSize.z),
                                   childSize, self.value)
-        self.children[2] = Octree(Vector3(self.pos.x - childSize.x, self.pos.y + childSize.y, self.pos.z - childSize.z),
+        self.children[2] = Octree(Pos(self.pos.x - childSize.x, self.pos.y + childSize.y, self.pos.z - childSize.z),
                                   childSize, self.value)
-        self.children[3] = Octree(Vector3(self.pos.x + childSize.x, self.pos.y + childSize.y, self.pos.z - childSize.z),
+        self.children[3] = Octree(Pos(self.pos.x + childSize.x, self.pos.y + childSize.y, self.pos.z - childSize.z),
                                   childSize, self.value)
-        self.children[4] = Octree(Vector3(self.pos.x - childSize.x, self.pos.y - childSize.y, self.pos.z + childSize.z),
+        self.children[4] = Octree(Pos(self.pos.x - childSize.x, self.pos.y - childSize.y, self.pos.z + childSize.z),
                                   childSize, self.value)
-        self.children[5] = Octree(Vector3(self.pos.x + childSize.x, self.pos.y - childSize.y, self.pos.z + childSize.z),
+        self.children[5] = Octree(Pos(self.pos.x + childSize.x, self.pos.y - childSize.y, self.pos.z + childSize.z),
                                   childSize, self.value)
-        self.children[6] = Octree(Vector3(self.pos.x - childSize.x, self.pos.y + childSize.y, self.pos.z + childSize.z),
+        self.children[6] = Octree(Pos(self.pos.x - childSize.x, self.pos.y + childSize.y, self.pos.z + childSize.z),
                                   childSize, self.value)
-        self.children[7] = Octree(Vector3(self.pos.x + childSize.x, self.pos.y + childSize.y, self.pos.z + childSize.z),
+        self.children[7] = Octree(Pos(self.pos.x + childSize.x, self.pos.y + childSize.y, self.pos.z + childSize.z),
                                   childSize, self.value)
 
     def merge(self):
@@ -174,37 +160,57 @@ class Octree:
     '''
 
     def getNeighbours(self, pos, cur=None):
-        cur = cur or self.getLeavesInArea(pos, Vector3(0.0, 0.0, 0.0))[0]
+        cur = cur or self.getLeavesInArea(pos, Pos(0.0, 0.0, 0.0))[0]
         minLength = (Octree.minSize ** (1.0 / 3.0)) / 2
         neighbours = []
-        nx = self.getLeavesInArea(cur.pos, Vector3(cur.size.x + minLength, 0.0, 0.0))
+        nx = self.getLeavesInArea(cur.pos, Pos(cur.size.x + minLength, 0.0, 0.0))
         for i in nx: neighbours.append(i)
         neighbours.remove(cur)
-        ny = self.getLeavesInArea(cur.pos, Vector3(0.0, cur.size.y + minLength, 0.0))
+        ny = self.getLeavesInArea(cur.pos, Pos(0.0, cur.size.y + minLength, 0.0))
         for i in ny: neighbours.append(i)
         neighbours.remove(cur)
-        nz = self.getLeavesInArea(cur.pos, Vector3(0.0, 0.0, cur.size.z + minLength))
+        nz = self.getLeavesInArea(cur.pos, Pos(0.0, 0.0, cur.size.z + minLength))
         for i in nz: neighbours.append(i)
         neighbours.remove(cur)
         return neighbours
+
+    @staticmethod
+    def cornerIt(neighbours: [int]):
+        nodes = []
+        minLength = (Octree.minSize ** (1.0 / 3.0)) / 2
+        for n in neighbours:
+            if n.value != "Air": continue
+            if n.volume <= Octree.minSize:
+                nodes.append(n.pos)
+                continue
+            cs = Pos(minLength, minLength, minLength)
+            nodes.append(Pos(n.pos.x + n.size.x - cs.x, n.pos.y + n.size.y - cs.y, n.pos.z + n.size.z - cs.z))
+            nodes.append(Pos(n.pos.x - n.size.x + cs.x, n.pos.y + n.size.y - cs.y, n.pos.z + n.size.z - cs.z))
+            nodes.append(Pos(n.pos.x + n.size.x - cs.x, n.pos.y - n.size.y + cs.y, n.pos.z + n.size.z - cs.z))
+            nodes.append(Pos(n.pos.x - n.size.x + cs.x, n.pos.y - n.size.y + cs.y, n.pos.z + n.size.z - cs.z))
+            nodes.append(Pos(n.pos.x + n.size.x - cs.x, n.pos.y + n.size.y - cs.y, n.pos.z - n.size.z + cs.z))
+            nodes.append(Pos(n.pos.x - n.size.x + cs.x, n.pos.y + n.size.y - cs.y, n.pos.z - n.size.z + cs.z))
+            nodes.append(Pos(n.pos.x + n.size.x - cs.x, n.pos.y - n.size.y + cs.y, n.pos.z - n.size.z + cs.z))
+            nodes.append(Pos(n.pos.x - n.size.x + cs.x, n.pos.y - n.size.y + cs.y, n.pos.z - n.size.z + cs.z))
+        return nodes
 
 
 '''
 if __name__ == '__main__':
     Octree.minSize = 0.25 * 0.25 * 0.25
-    root = Octree(Vector3(0.0, 0.0, -32.0), Vector3(32.0, 32.0, 32.0), "Air")
-    root.setValue(Vector3(0.125, 0.125, -0.125), Vector3(0.125, 0.125, 0.125), "Obstacle")
-    nl = root.getNeighbours(Vector3(0.125, 0.625, -0.125))
+    root = Octree(Pos(0.0, 0.0, -32.0), Pos(32.0, 32.0, 32.0), "Air")
+    root.setValue(Pos(0.125, 0.125, -0.125), Pos(0.125, 0.125, 0.125), "Obstacle")
+    nl = root.getNeighbours(Pos(0.125, 0.625, -0.125))
     print(len(nl))
     for n in nl:
         print(n.pos)
 '''
 
 if __name__ == '__main__':
-    def foo(a=None):
-        a = a or 12
-        print(a)
-
-
-    foo()
-    foo(10)
+    Octree.minSize = 0.25 * 0.25 * 0.25
+    root = Octree(Pos(0.0, 0.0, -32.0), Pos(32.0, 32.0, 32.0), "Air")
+    root.setValue(Pos(0.125, 0.125, -0.125), Pos(0.125, 0.125, 0.125), "Obstacle")
+    nl = root.getNeighbours(Pos(0.125, 0.625, -0.125))
+    nl = Octree.cornerIt(nl)
+    for n in nl:
+        print(n)

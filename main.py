@@ -7,7 +7,7 @@ from mavsdk.offboard import OffboardError, PositionNedYaw
 from typing import List
 
 from Astar import Pos, Astar
-from Octree import Vector3, Octree
+from Octree import Pos, Octree
 from Draw import Draw
 
 localDronePos = \
@@ -31,6 +31,17 @@ def moveDrone(x, z, y, d):
 async def readStatus(drone):
     async for st in drone.telemetry.status_text():
         print(f"Status: {st.text}")
+
+
+async def getPosition(drone):
+    async for p in drone.telemetry.position_velocity_ned():
+        return Pos(p.position.north_m, p.position.east_m, p.position.down_m)
+
+
+async def closeEnough(p1: Pos, p2: Pos, close):
+    return abs(p1.x - p2.x) < close and \
+           abs(p1.y - p2.y) < close and \
+           abs(p1.z - p2.z) < close
 
 
 async def run(path: List[Pos]):
@@ -60,6 +71,7 @@ async def run(path: List[Pos]):
 
     print("Setting initial setpoint")
     await drone.offboard.set_position_ned(moveDrone(0.0, 0.0, -5.0, 0.0))
+    home = await getPosition(drone)
 
     print("Starting offboard")
     try:
@@ -73,8 +85,15 @@ async def run(path: List[Pos]):
     for p in path:
         print("Goto:", p)
         await drone.offboard.set_position_ned(PositionNedYaw(p.x, p.y, p.z, 0))
-        await asyncio.sleep(5)  # TODO read our pos, adjust, then move on
 
+        while 1:
+            pos = await getPosition(drone)
+            if await closeEnough(pos, p, 0.25): break
+            print(pos, p)
+            await asyncio.sleep(1)
+
+    print("Goal reached!")
+    await asyncio.sleep(5)
     print("Stopping offboard")
     try:
         await drone.offboard.stop()
@@ -88,8 +107,8 @@ async def run(path: List[Pos]):
 def loadMap(fileName: str, root: Octree):
     def mine(line: str, root: Octree):
         data = line.split(' ')
-        pos = Vector3(float(data[0]), float(data[1]), float(data[2]))
-        size = Vector3(float(data[3]), float(data[4]), float(data[5]))
+        pos = Pos(float(data[0]), float(data[1]), float(data[2]))
+        size = Pos(float(data[3]), float(data[4]), float(data[5]))
         root.setValue(pos, size, "Obstacle")
 
     f = open(fileName, "r")
@@ -102,13 +121,14 @@ def loadMap(fileName: str, root: Octree):
 
 if __name__ == "__main__":
     Octree.minSize = 0.25 * 0.25 * 0.25
-    root = Octree(Vector3(0.0, 0.0, -32.0), Vector3(32.0, 32.0, 32.0), "Air")
-    loadMap("obstacles/obstacles.map",root)
+    root = Octree(Pos(0.0, 0.0, -32.0), Pos(32.0, 32.0, 32.0), "Air")
+    loadMap("obstacles/obstacles.map", root)
     start = Pos(0.0, 0.0, 0.0)
     goal = Pos(6.0, 0.2, -2.0)
-    path = Astar(start, goal, root)
-    draw = Draw(Vector3(-32.0, -32.0, 0.0), Vector3(32.0, 32.0, -64.0))
+    draw = Draw(Pos(-8.0, -8.0, 0.0), Pos(8.0, 8.0, -8.0))
+    path = Astar(start, goal, root, draw)
     draw.showPath(path)
+
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run(path))
