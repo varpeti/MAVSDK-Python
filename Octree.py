@@ -163,13 +163,13 @@ class Octree:
         cur = cur or self.getLeavesInArea(pos, Pos(0.0, 0.0, 0.0))[0]
         minLength = (Octree.minSize ** (1.0 / 3.0)) / 2
         neighbours = []
-        nx = self.getLeavesInArea(cur.pos, Pos(cur.size.x + minLength, 0.0, 0.0))
+        nx = self.getLeavesInArea(cur.pos, Pos(cur.size.x + minLength, cur.size.y - minLength, cur.size.z - minLength))
         for i in nx: neighbours.append(i)
         neighbours.remove(cur)
-        ny = self.getLeavesInArea(cur.pos, Pos(0.0, cur.size.y + minLength, 0.0))
+        ny = self.getLeavesInArea(cur.pos, Pos(cur.size.x - minLength, cur.size.y + minLength, cur.size.z - minLength))
         for i in ny: neighbours.append(i)
         neighbours.remove(cur)
-        nz = self.getLeavesInArea(cur.pos, Pos(0.0, 0.0, cur.size.z + minLength))
+        nz = self.getLeavesInArea(cur.pos, Pos(cur.size.x - minLength, cur.size.y - minLength, cur.size.z + minLength))
         for i in nz: neighbours.append(i)
         neighbours.remove(cur)
         return neighbours
@@ -177,13 +177,18 @@ class Octree:
     @staticmethod
     def cornerIt(neighbours: [int]):
         nodes = []
-        minLength = (Octree.minSize ** (1.0 / 3.0)) / 2
+        minLength = (Octree.minSize ** (1.0 / 3.0))
         for n in neighbours:
             if n.value != "Air": continue
-            if n.volume <= Octree.minSize:
-                nodes.append(n.pos)
-                continue
-            cs = Pos(minLength, minLength, minLength)
+            thisLength = (n.volume ** (1.0 / 3.0))
+            if thisLength <= minLength * 1: continue  # Too small to step in
+
+            # Center
+            nodes.append(n.pos)
+
+            if thisLength <= minLength * 0: continue  # Too small to corner it
+
+            cs = Pos(minLength * 2.0, minLength * 2.0, minLength * 2.0)
             nodes.append(Pos(n.pos.x + n.size.x - cs.x, n.pos.y + n.size.y - cs.y, n.pos.z + n.size.z - cs.z))
             nodes.append(Pos(n.pos.x - n.size.x + cs.x, n.pos.y + n.size.y - cs.y, n.pos.z + n.size.z - cs.z))
             nodes.append(Pos(n.pos.x + n.size.x - cs.x, n.pos.y - n.size.y + cs.y, n.pos.z + n.size.z - cs.z))

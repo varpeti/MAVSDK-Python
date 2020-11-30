@@ -67,9 +67,6 @@ def Astar(start: Pos, goal: Pos, root: Octree, draw) -> List[Pos]:
                     path = child.path
                     break
                 priorityQueue.put((child.f, count, child))
-        if count > 90000:
-            print("Over90000")
-            return current.path
     return path
 
 

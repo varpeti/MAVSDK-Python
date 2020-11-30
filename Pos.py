@@ -2,8 +2,6 @@ import math
 
 
 class Pos:
-    neighbourDistance = 0.125 / 10.0
-
     def __init__(self, x, y, z):
         self.x = x
         self.y = y
