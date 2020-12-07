@@ -12,6 +12,7 @@ from Octree import Octree
 from Pos import Pos
 from Draw import Draw
 
+
 async def readStatus(drone):
     async for st in drone.telemetry.status_text():
         print(f"Status: {st.text}")
@@ -40,8 +41,39 @@ async def receiveMessageHackedIntoGPS(drone):
             isCollisionAlert = 0
 
 
-async def run(path: List[Pos]):
+wasAlert = False
+
+
+async def avoidCol(drone, pos, p):
     global isCollisionAlert
+    global wasAlert
+    cd = 1.0
+    # TODO: better collision avoidance
+    if isCollisionAlert > 0:
+        wasAlert = True
+        fuzzA = random() * (cd * 2.0) - cd
+        fuzzB = random() * (cd * 2.0) - cd
+        if isCollisionAlert == 100:
+            await drone.offboard.set_position_ned(PositionNedYaw(pos.x + cd, p.y + fuzzA, p.z + fuzzB, 0))
+        elif isCollisionAlert == 101:
+            await drone.offboard.set_position_ned(PositionNedYaw(pos.x - cd, p.y + fuzzA, p.z + fuzzB, 0))
+        elif isCollisionAlert == 102:
+            await drone.offboard.set_position_ned(PositionNedYaw(p.x + fuzzA, pos.y + cd, p.z + fuzzB, 0))
+        elif isCollisionAlert == 103:
+            await drone.offboard.set_position_ned(PositionNedYaw(p.x + fuzzA, pos.y - cd, p.z + fuzzB, 0))
+        elif isCollisionAlert == 104:
+            await drone.offboard.set_position_ned(PositionNedYaw(p.x + fuzzA, p.y + fuzzB, pos.z + cd, 0))
+        elif isCollisionAlert == 105:
+            await drone.offboard.set_position_ned(PositionNedYaw(p.x + fuzzA, p.y + fuzzB, pos.z - cd, 0))
+        print(isCollisionAlert)
+        await asyncio.sleep(0.2)
+    else:
+        if wasAlert:
+            await drone.offboard.set_position_ned(PositionNedYaw(p.x, p.y, p.z, 0))
+            wasAlert = False
+
+
+async def run(path: List[Pos]):
     drone = System()
     await drone.connect(system_address="udp://:14540")
 
@@ -75,8 +107,6 @@ async def run(path: List[Pos]):
         await drone.action.disarm()
         return
 
-    cd = 1.0
-    wasAlert = False
     for p in path:
         print("Goto:", p)
         await drone.offboard.set_position_ned(PositionNedYaw(p.x, p.y, p.z, 0))
@@ -84,30 +114,7 @@ async def run(path: List[Pos]):
         while True:
             pos = await getPosition(drone)
             if await closeEnough(pos, p, 0.25): break
-
-            # TODO: better collision avoidance
-            if isCollisionAlert > 0:
-                wasAlert = True
-                fuzzA = random()*(cd*2.0)-cd
-                fuzzB = random()*(cd*2.0)-cd
-                if isCollisionAlert == 100:
-                    await drone.offboard.set_position_ned(PositionNedYaw(pos.x+cd, p.y+fuzzA, p.z+fuzzB, 0))
-                elif isCollisionAlert == 101:
-                    await drone.offboard.set_position_ned(PositionNedYaw(pos.x-cd,  p.y+fuzzA, p.z+fuzzB, 0))
-                elif isCollisionAlert == 102:
-                    await drone.offboard.set_position_ned(PositionNedYaw(p.x+fuzzA, pos.y+cd, p.z+fuzzB, 0))
-                elif isCollisionAlert == 103:
-                    await drone.offboard.set_position_ned(PositionNedYaw(p.x+fuzzA, pos.y-cd, p.z+fuzzB, 0))
-                elif isCollisionAlert == 104:
-                    await drone.offboard.set_position_ned(PositionNedYaw(p.x+fuzzA, p.y+fuzzB, pos.z+cd, 0))
-                elif isCollisionAlert == 105:
-                    await drone.offboard.set_position_ned(PositionNedYaw(p.x+fuzzA, p.y+fuzzB, pos.z-cd, 0))
-                print(isCollisionAlert)
-                await asyncio.sleep(0.2)
-            else:
-                if wasAlert:
-                    await drone.offboard.set_position_ned(PositionNedYaw(p.x, p.y, p.z, 0))
-
+            await avoidCol(drone, pos, p)
             await asyncio.sleep(0.1)
 
     print("Goal reached!")

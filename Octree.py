@@ -181,12 +181,12 @@ class Octree:
         for n in neighbours:
             if n.value != "Air": continue
             thisLength = (n.volume ** (1.0 / 3.0))
-            if thisLength <= minLength * 1: continue  # Too small to step in
+            if thisLength <= minLength * 2: continue  # Too small to step in
 
             # Center
             nodes.append(n.pos)
 
-            if thisLength <= minLength * 0: continue  # Too small to corner it
+            if thisLength <= minLength * 4: continue  # Too small to corner it
 
             cs = Pos(minLength * 2.0, minLength * 2.0, minLength * 2.0)
             nodes.append(Pos(n.pos.x + n.size.x - cs.x, n.pos.y + n.size.y - cs.y, n.pos.z + n.size.z - cs.z))
